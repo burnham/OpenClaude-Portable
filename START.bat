@@ -225,12 +225,13 @@ echo   !CYAN!2)!RESET! !BOLD!NVIDIA NIM!RESET!   !DIM!- High-Speed GPU Free Tier
 echo   !CYAN!3)!RESET! !BOLD!DeepSeek!RESET!     !DIM!- DeepSeek API (OpenAI-compatible)!RESET!
 echo   !CYAN!4)!RESET! !BOLD!Gemini!RESET!       !DIM!- Google AI API!RESET!
 echo   !CYAN!5)!RESET! !BOLD!Claude!RESET!       !DIM!- Anthropic API!RESET!
-echo   !CYAN!6)!RESET! !BOLD!OpenAI!RESET!       !DIM!- GPT / Codex API!RESET!
-echo   !CYAN!7)!RESET! !BOLD!Ollama!RESET!       !DIM!- Local Offline AI (No internet)!RESET!
+echo   !CYAN!6^)!RESET! !BOLD!OpenAI!RESET!       !DIM!- GPT / Codex API!RESET!
+echo   !CYAN!7^)!RESET! !BOLD!Ollama!RESET!       !DIM!- Local Offline AI ^(No internet^)!RESET!
+echo   !CYAN!8^)!RESET! !BOLD!OpenAI Plus!RESET!  !DIM!- Use ChatGPT Plus subscription ^(No API costs^)!RESET!
 echo.
 :prompt_provider
 set "PROVIDER_SEL="
-set /p "PROVIDER_SEL=  Select your provider !CYAN!(1-7)!RESET!: "
+set /p "PROVIDER_SEL=  Select your provider !CYAN!(1-8)!RESET!: "
 
 if "!PROVIDER_SEL!"=="1" goto setup_openrouter
 if "!PROVIDER_SEL!"=="2" goto setup_nvidia
@@ -239,8 +240,27 @@ if "!PROVIDER_SEL!"=="4" goto setup_gemini
 if "!PROVIDER_SEL!"=="5" goto setup_claude
 if "!PROVIDER_SEL!"=="6" goto setup_openai
 if "!PROVIDER_SEL!"=="7" goto setup_ollama
-echo   !RED![ERROR] Invalid selection. Please choose 1-7.!RESET!
+if "!PROVIDER_SEL!"=="8" goto setup_openai_plus
+echo   !RED![ERROR] Invalid selection. Please choose 1-8.!RESET!
 goto prompt_provider
+
+:: ---------------------------------------------------------
+::   OPENAI PLUS SETUP (No-API)
+:: ---------------------------------------------------------
+:setup_openai_plus
+(
+    echo AI_PROVIDER=openai
+    echo CLAUDE_CODE_USE_OPENAI=1
+    echo OPENAI_API_KEY=plus-auth-bridge
+    echo OPENAI_BASE_URL=http://localhost:11436/v1
+    echo OPENAI_MODEL=gpt-4o
+    echo AI_DISPLAY_MODEL=gpt-4o ^(Plus Auth^)
+) > "%ENV_FILE%"
+echo.
+echo   !GREEN![OK] OpenAI Plus Auth configured!!RESET!
+echo   !DIM!     The bridge will ask you to login on the first run.!RESET!
+echo.
+goto finish_setup
 
 :: ---------------------------------------------------------
 ::   OPENROUTER SETUP
@@ -788,6 +808,24 @@ echo.
 
 :skip_ollama_start
 
+:: --- OPENAI PLUS BRIDGE START ---
+if not "!OPENAI_API_KEY!"=="plus-auth-bridge" goto skip_plus_bridge
+if not exist "%USB_ROOT%tools\openai-auth-bridge.mjs" goto skip_plus_bridge
+
+echo   !CYAN![~] Starting OpenAI Plus Auth Bridge...!RESET!
+REM Kill existing bridge if running
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -like '*openai-auth-bridge.mjs*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
+
+REM We must set NODE_PATH to find modules in engine/node_modules
+set "NODE_PATH=%ENGINE_DIR%\node_modules"
+start "OpenAIPlusBridge" /B /MIN "%NODE_DIR%\node.exe" "%USB_ROOT%tools\openai-auth-bridge.mjs"
+
+:: Wait for the bridge to be ready (login flow might happen here)
+echo   !DIM!      Checking auth status...!RESET!
+timeout /t 3 /nobreak >nul
+echo   !GREEN![OK] Plus Bridge active!RESET!
+echo.
+:skip_plus_bridge
 
 echo   !CYAN![~] Starting AI Engine...!RESET!
 echo.
