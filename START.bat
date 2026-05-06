@@ -57,10 +57,11 @@ goto after_install_engine_func
 :install_engine
 set "INSTALL_ACTION=%~1"
 if "%INSTALL_ACTION%"=="" set "INSTALL_ACTION=Installing"
-echo   !YELLOW![~] !INSTALL_ACTION! OpenClaude Engine...!RESET!
+echo   !YELLOW![~] !INSTALL_ACTION! OpenClaude Engine ^& Plus Auth Dependencies...!RESET!
 echo   !DIM!    This can take several minutes on slower USB drives or networks.!RESET!
 pushd "%ENGINE_DIR%"
-call npm.cmd install @gitlawb/openclaude@latest --no-audit --no-fund --loglevel=warn --no-bin-links
+:: Install main engine and bridge dependencies
+call npm.cmd install @gitlawb/openclaude@latest hono@latest @openauthjs/openauth@latest --no-audit --no-fund --loglevel=warn --no-bin-links
 set "NPM_STATUS=!ERRORLEVEL!"
 popd
 if not "!NPM_STATUS!"=="0" (
