@@ -813,17 +813,37 @@ echo.
 if not "!OPENAI_API_KEY!"=="plus-auth-bridge" goto skip_plus_bridge
 if not exist "%USB_ROOT%tools\openai-auth-bridge.mjs" goto skip_plus_bridge
 
+set "BRIDGE_READY_FILE=%DATA_DIR%\bridge_ready.tmp"
+set "BRIDGE_AUTH_FILE=%DATA_DIR%\plus_auth.json"
+if exist "%BRIDGE_READY_FILE%" del "%BRIDGE_READY_FILE%"
+
 echo   !CYAN![~] Starting OpenAI Plus Auth Bridge...!RESET!
 REM Kill existing bridge if running
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -like '*openai-auth-bridge.mjs*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 
 REM We must set NODE_PATH to find modules in engine/node_modules
 set "NODE_PATH=%ENGINE_DIR%\node_modules"
-start "OpenAIPlusBridge" /B /MIN "%NODE_DIR%\node.exe" "%USB_ROOT%tools\openai-auth-bridge.mjs"
 
-:: Wait for the bridge to be ready (login flow might happen here)
-echo   !DIM!      Checking auth status...!RESET!
-timeout.exe /t 3 /nobreak >nul
+if not exist "%BRIDGE_AUTH_FILE%" (
+    echo   !YELLOW![!] First time login required. Window will stay open...!RESET!
+    start "OpenAI Plus Bridge - LOGIN REQUIRED" "%NODE_DIR%\node.exe" "%USB_ROOT%tools\openai-auth-bridge.mjs"
+) else (
+    start "OpenAI Plus Bridge" /B /MIN "%NODE_DIR%\node.exe" "%USB_ROOT%tools\openai-auth-bridge.mjs"
+)
+
+:: Wait for the bridge to signal READY
+echo   !DIM!      Waiting for bridge to be ready...!RESET!
+:wait_bridge
+if not exist "%BRIDGE_READY_FILE%" (
+    set /a "wait_count+=1"
+    if !wait_count! GTR 60 (
+        echo   !RED![ERROR] Bridge took too long to start. Check plus_bridge.log.!RESET!
+        pause
+        goto skip_plus_bridge
+    )
+    C:\Windows\System32\timeout.exe /t 2 /nobreak >nul
+    goto wait_bridge
+)
 echo   !GREEN![OK] Plus Bridge active!RESET!
 echo.
 :skip_plus_bridge
