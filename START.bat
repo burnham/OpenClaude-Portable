@@ -249,13 +249,18 @@ goto prompt_provider
 ::   OPENAI PLUS SETUP (No-API)
 :: ---------------------------------------------------------
 :setup_openai_plus
+echo.
+echo   !CYAN!--- OPENAI PLUS SETUP ---!RESET!
+echo.
+set /p "USER_MODEL=  Enter Model !DIM!(Enter for gpt-4o)!RESET!: "
+if "!USER_MODEL!"=="" set "USER_MODEL=gpt-4o"
 (
     echo AI_PROVIDER=openai
     echo CLAUDE_CODE_USE_OPENAI=1
     echo OPENAI_API_KEY=plus-auth-bridge
     echo OPENAI_BASE_URL=http://localhost:11436/v1
-    echo OPENAI_MODEL=gpt-4o
-    echo AI_DISPLAY_MODEL=gpt-4o ^(Plus Auth^)
+    echo OPENAI_MODEL=!USER_MODEL!
+    echo AI_DISPLAY_MODEL=!USER_MODEL! ^(Plus Auth^)
 ) > "%ENV_FILE%"
 echo.
 echo   !GREEN![OK] OpenAI Plus Auth configured!!RESET!
