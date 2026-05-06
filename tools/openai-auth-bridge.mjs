@@ -152,8 +152,8 @@ async function startLoginFlow() {
             }
         });
 
-        server.listen(1455, "localhost", () => {
-            log("Auth callback server listening on localhost:1455");
+        server.listen(1455, "127.0.0.1", () => {
+            log("Auth callback server listening on 127.0.0.1:1455");
             console.log("\n  \x1b[33m[!]\x1b[0m \x1b[1mOpenAI Plus Auth Required\x1b[0m");
             console.log("  --------------------------------------------------");
             console.log("  Opening browser for login...");
@@ -263,16 +263,16 @@ async function main() {
     const PORT = 11436;
     
     if (await getValidToken()) {
-        server.listen(PORT, "localhost", () => {
-            log(`Plus Bridge active on http://localhost:${PORT}`);
+        server.listen(PORT, "127.0.0.1", () => {
+            log(`Plus Bridge active on http://127.0.0.1:${PORT}`);
             fs.writeFileSync(READY_FILE, "READY", "utf-8");
             console.log(`  \x1b[32m[OK]\x1b[0m Plus Bridge active on port ${PORT}`);
         });
     } else {
         // Si no hay token, el flujo de login iniciará el servidor en 1455 y luego levantaremos el proxy en PORT
         await startLoginFlow();
-        server.listen(PORT, "localhost", () => {
-            log(`Plus Bridge active on http://localhost:${PORT}`);
+        server.listen(PORT, "127.0.0.1", () => {
+            log(`Plus Bridge active on http://127.0.0.1:${PORT}`);
             fs.writeFileSync(READY_FILE, "READY", "utf-8");
         });
     }
