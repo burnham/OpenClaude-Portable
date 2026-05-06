@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { crypto, randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 
 // --- IMPORTS DESDE ENGINE ---
 // Asumimos que Node puede encontrar hono y @openauthjs/openauth si el path está bien
@@ -36,7 +36,7 @@ function log(msg) {
 // --- PKCE HELPER ---
 function generatePKCE() {
     const verifier = randomBytes(32).toString('base64url');
-    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
     return { verifier, challenge };
 }
 

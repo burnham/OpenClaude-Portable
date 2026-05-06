@@ -823,7 +823,7 @@ start "OpenAIPlusBridge" /B /MIN "%NODE_DIR%\node.exe" "%USB_ROOT%tools\openai-a
 
 :: Wait for the bridge to be ready (login flow might happen here)
 echo   !DIM!      Checking auth status...!RESET!
-timeout /t 3 /nobreak >nul
+timeout.exe /t 3 /nobreak >nul
 echo   !GREEN![OK] Plus Bridge active!RESET!
 echo.
 :skip_plus_bridge
