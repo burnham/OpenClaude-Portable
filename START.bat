@@ -837,15 +837,9 @@ if not exist "%BRIDGE_AUTH_FILE%" (
 )
 
 :: Wait for the bridge to signal READY
-echo   !DIM!      Waiting for bridge to be ready...!RESET!
+echo   !DIM!      Waiting for bridge to be ready ^(Login if requested in the other window^)...!RESET!
 :wait_bridge
 if not exist "%BRIDGE_READY_FILE%" (
-    set /a "wait_count+=1"
-    if !wait_count! GTR 60 (
-        echo   !RED![ERROR] Bridge took too long to start. Check plus_bridge.log.!RESET!
-        pause
-        goto skip_plus_bridge
-    )
     C:\Windows\System32\timeout.exe /t 2 /nobreak >nul
     goto wait_bridge
 )

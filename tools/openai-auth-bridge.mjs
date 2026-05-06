@@ -181,8 +181,9 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            // Simplificación: Enviar a ChatGPT backend
-            log(`Proxying request for model: ${json.model}`);
+            // Usar el modelo solicitado por OpenClaude, o gpt-4o por defecto
+            const modelToUse = json.model || "gpt-4o";
+            log(`Proxying request for model: ${modelToUse}`);
 
             const chatgptBody = {
                 action: "next",
@@ -193,7 +194,7 @@ const server = http.createServer(async (req, res) => {
                     metadata: {}
                 })),
                 parent_message_id: randomBytes(16).toString("hex"),
-                model: "gpt-4o",
+                model: modelToUse,
                 timezone_offset_min: -60,
                 history_and_training_disabled: false,
                 arkose_token: null
@@ -212,38 +213,55 @@ const server = http.createServer(async (req, res) => {
                 });
 
                 if (!response.ok) {
-                    log(`ChatGPT API error: ${response.status}`);
+                    const errText = await response.text();
+                    log(`ChatGPT API error: ${response.status} - ${errText}`);
                     res.writeHead(response.status);
-                    res.end(await response.text());
+                    res.end(errText);
                     return;
                 }
 
                 // Stream back to OpenClaude
                 res.writeHead(200, { "Content-Type": "text/event-stream" });
+                
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
+                let buffer = "";
                 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value);
-                    
-                    const lines = chunk.split("\n");
-                    for (let line of lines) {
-                        if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                if (data.message && data.message.content && data.message.content.parts) {
-                                    const text = data.message.content.parts[0];
-                                    const openaiChunk = {
-                                        choices: [{ delta: { content: text }, index: 0, finish_reason: null }]
-                                    };
-                                    res.write(`data: ${JSON.stringify(openaiChunk)}\n\n`);
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop(); // Mantener la última línea incompleta en el buffer
+
+                        for (let line of lines) {
+                            line = line.trim();
+                            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    if (data.message && data.message.content && data.message.content.parts) {
+                                        const text = data.message.content.parts[0];
+                                        const openaiChunk = {
+                                            id: `chatcmpl-${randomBytes(8).toString("hex")}`,
+                                            object: "chat.completion.chunk",
+                                            created: Math.floor(Date.now() / 1000),
+                                            model: modelToUse,
+                                            choices: [{ delta: { content: text }, index: 0, finish_reason: null }]
+                                        };
+                                        res.write(`data: ${JSON.stringify(openaiChunk)}\n\n`);
+                                    }
+                                } catch (e) {
+                                    // Ignorar errores de parseo de líneas individuales
                                 }
-                            } catch {}
+                            }
                         }
                     }
+                } catch (streamErr) {
+                    log(`Stream processing error: ${streamErr.message}`);
                 }
+                
                 res.write("data: [DONE]\n\n");
                 res.end();
             } catch (err) {
